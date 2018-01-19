@@ -25,7 +25,7 @@ struct PhotoCollectionService {
     func filePathFor(photoCollection name: String) -> URL {
         let fileManager = FileManager.default
         let documentsFilePath = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let photoCollectionFilePath = documentsFilePath.appendingPathComponent(name, isDirectory: true)
+        let photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true).appendingPathComponent(name, isDirectory: true)
         
         return photoCollectionFilePath
     }
@@ -68,7 +68,7 @@ struct PhotoCollectionService {
             for jsonCollection in jsonCollections {
                 guard
                     let zipUrl = URL(string: jsonCollection["zipped_images_url"] as! String),
-                    let collectionTitle = jsonCollection["collection_name"] as! String?
+                    var collectionTitle = jsonCollection["collection_name"] as! String?
                     else {
                     return //skip jsonCollection
                 }
@@ -81,10 +81,17 @@ struct PhotoCollectionService {
                         else {
                             return //skip jsonCollection
                     }
+                    collectionTitle = collectionTitle.lowercased()
                     let cacheFilePath = self.filePathFor(photoCollection: collectionTitle)
                     do {
-                        try Zip.unzipFile(filePath, destination: cacheFilePath, overwrite: true, password: nil)
-                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, contentUrl: cacheFilePath)
+                        try Zip.unzipFile(filePath, destination: cacheFilePath, innerFolderTitle: collectionTitle)
+                        
+                        /*Location _preview image*/
+                        let previewUrl = cacheFilePath.appendingPathComponent("_preview.png")
+                        let imageData = try Data(contentsOf: previewUrl)
+                        let image = UIImage(data: imageData)
+                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: cacheFilePath)
+                        
                         collections.append(photoCollection)
                     } catch {
                         //TODO: if Zip.unzip fails do i have to clear the

@@ -7,9 +7,12 @@
 //
 
 import Foundation
+import UIKit
+
 struct PhotoCollection: Encodable {
     let title: String
     let zipUrl: URL
+    var previewImage: UIImage? = nil
     var contentUrl: URL?
     
     enum CodingKeys: String, CodingKey {
