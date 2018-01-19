@@ -25,7 +25,7 @@ struct PhotoCollectionService {
     func filePathFor(photoCollection name: String) -> URL {
         let fileManager = FileManager.default
         let documentsFilePath = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true).appendingPathComponent(name, isDirectory: true)
+        let photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true)/*.appendingPathComponent(name, isDirectory: true) removes adding an extra folder*/
         
         return photoCollectionFilePath
     }
@@ -86,16 +86,21 @@ struct PhotoCollectionService {
                     do {
                         try Zip.unzipFile(filePath, destination: cacheFilePath, innerFolderTitle: collectionTitle)
                         
-                        /*Location _preview image*/
-                        let previewUrl = cacheFilePath.appendingPathComponent("_preview.png")
+                        /*Locate the _preview image*/
+                        let unzippedFolderTitle = zipUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
+                        let collectionCacheFilePath = cacheFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
+                        let previewUrl = collectionCacheFilePath.appendingPathComponent("_preview.png")
                         let imageData = try Data(contentsOf: previewUrl)
                         let image = UIImage(data: imageData)
-                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: cacheFilePath)
+                        
+                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: collectionCacheFilePath)
                         
                         collections.append(photoCollection)
                     } catch {
                         //TODO: if Zip.unzip fails do i have to clear the
                         //folder?
+                        print("ERROR: \(error.localizedDescription)")
+                        print(zipUrl.deletingPathExtension().lastPathComponent)
                         
                         return //skip jsonCollection
                     }

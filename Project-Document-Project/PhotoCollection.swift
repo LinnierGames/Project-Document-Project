@@ -23,6 +23,6 @@ struct PhotoCollection: Encodable {
 
 extension PhotoCollection: CustomStringConvertible {
     var description: String {
-        return "\(title), zip \(zipUrl.relativeString), \(contentUrl?.relativeString ?? "not found")"
+        return "\(title)"
     }
 }

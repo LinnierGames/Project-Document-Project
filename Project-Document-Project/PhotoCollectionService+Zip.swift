@@ -20,7 +20,9 @@ extension Zip {
      */
     public class func unzipFile(_ zipFilePath: URL, destination: URL, innerFolderTitle: String) throws {
         do {
+            /*Unzip into destination url*/
             try Zip.unzipFile(zipFilePath, destination: destination, overwrite: true, password: nil)
+            /*Since contents unziped is a //
             let fileManager = FileManager.default
             let innerFolderUrl = destination.appendingPathComponent(innerFolderTitle, isDirectory: true)
             let contents = try fileManager.contentsOfDirectory(at: innerFolderUrl, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
@@ -35,7 +37,7 @@ extension Zip {
             try? fileManager.removeItem(at: innerFolderUrl)
             
             /*clear the ziped file path from the temp folder*/
-            try? fileManager.removeItem(at: zipFilePath)
+            try? fileManager.removeItem(at: zipFilePath)*/
         } catch {
             throw error
         }
