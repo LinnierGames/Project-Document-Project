@@ -8,29 +8,30 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+class ViewController: UITableViewController {
     
     var collections: [PhotoCollection] = [] {
         didSet {
-            //update table
+            tableView.reloadData()
         }
     }
 
     // MARK: - RETURN VALUES
     
-    // MARK: - VOID METHODS
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return collections.count
+    }
     
-    /*
-     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-     if let identifier = segue.identifier {
-     switch identifier {
-     case <#pattern#>:
-     <#code#>
-     default:
-     break
-     }
-     }
-     }*/
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+        
+        let photoCollection = collections[indexPath.row]
+        cell.configure(photoCollection: photoCollection)
+        
+        return cell
+    }
+    
+    // MARK: - VOID METHODS
     
     private func updateUI() {
         PhotoCollectionService().fetchPhotoCollections { [unowned self] (fetchedCollections) in
@@ -49,9 +50,9 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.updateUI()
         
+        self.updateUI()
+        tableView.rowHeight = 96
     }
-
 }
 
