@@ -56,6 +56,18 @@ struct PhotoCollectionService {
     
     let baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
     
+    func getPhotoCollections(complition: @escaping ([PhotoCollection]) -> ()) {
+        if UserDefaults.standard.userHasDownloadedImages {
+            loadPhotoCollections(complition: complition)
+        } else {
+            fetchPhotoCollections(complition: complition)
+        }
+    }
+    
+    func loadPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
+        
+    }
+    
     func fetchPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
         let request = URLRequest(url: baseUrl)
         let session = URLSession.shared
@@ -96,12 +108,14 @@ struct PhotoCollectionService {
                         /*Locate the _preview image*/
                         let unzippedFolderTitle = zipUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
                         let collectionCacheFilePath = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
-                        let previewUrl = collectionCacheFilePath.appendingPathComponent("_preview.png")
+                        let newCollectionCacheFilePath = imagesCacheFolderFilePath.appendingPathComponent(collectionTitle, isDirectory: true)
+                        try FileManager.default.moveItem(at: collectionCacheFilePath, to: newCollectionCacheFilePath)
+                        let previewUrl = newCollectionCacheFilePath.appendingPathComponent("_preview.png")
                         let imageData = try Data(contentsOf: previewUrl)
                         let image = UIImage(data: imageData)
                         
                         /*init PhotoCollection with collected data*/
-                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: collectionCacheFilePath)
+                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: newCollectionCacheFilePath)
                         
                         collections.append(photoCollection)
                     } catch {
@@ -113,6 +127,7 @@ struct PhotoCollectionService {
                 })
             }
             dispatchGroup.notify(queue: .main, execute: {
+                UserDefaults.standard.userHasDownloadedImages = true
                 complition(collections)
             })
         }.resume()
