@@ -56,7 +56,7 @@
                                 <connections>
                                     <outlet property="imageview" destination="nH5-wG-lRV" id="96c-c6-Maa"/>
                                     <outlet property="labelTitle" destination="ClH-fe-4Ng" id="LqZ-Pk-VrG"/>
-                                    <segue destination="20b-iB-8zQ" kind="show" id="41s-1u-lU8"/>
+                                    <segue destination="20b-iB-8zQ" kind="show" identifier="show photos" id="41s-1u-lU8"/>
                                 </connections>
                             </tableViewCell>
                         </prototypes>
@@ -121,7 +121,7 @@
                                     <constraint firstAttribute="bottom" secondItem="Thk-an-zno" secondAttribute="bottom" id="nHz-aF-ext"/>
                                 </constraints>
                                 <connections>
-                                    <outlet property="imageview" destination="Thk-an-zno" id="8aT-DY-guK"/>
+                                    <outlet property="thumbnailView" destination="Thk-an-zno" id="JpL-j3-DZw"/>
                                 </connections>
                             </collectionViewCell>
                         </cells>

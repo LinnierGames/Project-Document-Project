@@ -39,9 +39,20 @@ class ViewController: UITableViewController {
         }
     }
     
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if let identifier = segue.identifier {
+            switch identifier {
+            case "show photos":
+                let vc = segue.destination as! PhotoCollectionViewController
+                let cell = sender as! CustomTableViewCell
+                if let indexPath = tableView.indexPath(for: cell) {
+                    let selectedPhotoCollection = collections[indexPath.row]
+                    vc.photoCollection = selectedPhotoCollection
+                }
+                
+            default: break
+            }
+        }
     }
     
     // MARK: - IBACTIONS
