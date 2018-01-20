@@ -12,13 +12,18 @@ private let reuseIdentifier = "cell"
 
 class PhotoCollectionViewController: UICollectionViewController {
     
-    var photoCollection: PhotoCollection?
-    
-    private var collectionOfImages: [UIImage]? {
+    var photoCollection: PhotoCollection? {
         didSet {
-            collectionView?.reloadData()
+            if let collection = photoCollection {
+                PhotoCollectionService.collectPhotos(from: collection, complition: { [unowned self] (images) in
+                    self.collectionOfImages = images
+                    self.collectionView?.reloadData()
+                })
+            }
         }
     }
+    
+    private var collectionOfImages: [UIImage]?
     
     // MARK: - RETURN VALUES
     
@@ -27,7 +32,6 @@ class PhotoCollectionViewController: UICollectionViewController {
     override func numberOfSections(in collectionView: UICollectionView) -> Int {
         return 1
     }
-    
     
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return collectionOfImages?.count ?? 0
@@ -44,35 +48,6 @@ class PhotoCollectionViewController: UICollectionViewController {
     }
     
     // MARK: - VOID METHODS
-    
-    private func updateUI() {
-        guard
-            let collection = photoCollection,
-            let photoCollectionFilePath = collection.contentUrl
-            else {
-            return
-        }
-        /*collect urls, excluding the preview image*/
-        do {
-            let fileManager = FileManager.default
-            let photoUrls = try fileManager.contentsOfDirectory(at: photoCollectionFilePath, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
-                .filter { (url) -> Bool in
-                    return url.lastPathComponent.contains("_preview") == false
-                }.filter({ (url) -> Bool in
-                    return url.pathExtension.contains("jpeg") || url.pathExtension.contains("jpg")
-                })
-            /*decode into images and update the collection view*/
-            collectionOfImages = []
-            for imageFilePath in photoUrls {
-                if let image = UIImage(contentsOfFile: imageFilePath.relativePath) {
-                    collectionOfImages!.append(image)
-                }
-            }
-        } catch {
-            print(error.localizedDescription)
-        }
-        collectionView!.reloadData()
-    }
     
     // MARK: UICollectionViewDelegate
     
@@ -109,10 +84,4 @@ class PhotoCollectionViewController: UICollectionViewController {
     
     // MARK: - LIFE CYCLE
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        
-        self.updateUI()
-    }
-
 }

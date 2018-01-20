@@ -33,6 +33,13 @@ struct PhotoCollectionService {
         return photoCollectionFilePath
     }
     
+    /**
+     <#Lorem ipsum dolor sit amet.#>
+     
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     
+     - returns: <#Sed do eiusmod tempor.#>
+     */
     private func downloadZip(for url: URL, complition: @escaping (_ downloadLocation: URL?, Error?) -> ()) {
         let request = URLRequest(url: url)
         let session = URLSession.shared
@@ -56,16 +63,13 @@ struct PhotoCollectionService {
             guard error == nil else {
                 return complition([])
             }
-        
             guard
                 let result = data,
                 let jsonCollections = try? JSONSerialization.jsonObject(with: result, options: .allowFragments) as! [[String: Any]]
                 else {
                     return complition([])
             }
-            
             var collections: [PhotoCollection] = []
-            
             var dispatchGroup = DispatchGroup()
             
             for jsonCollection in jsonCollections {
@@ -113,4 +117,54 @@ struct PhotoCollectionService {
             })
         }.resume()
     }
+    
+    /**
+     <#Lorem ipsum dolor sit amet.#>
+     
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     
+     - returns: <#Sed do eiusmod tempor.#>
+     */
+    static func collectPhotos(from collection: PhotoCollection, complition: @escaping ([UIImage]) -> ()) {
+        guard
+            let photoCollectionFilePath = collection.contentUrl
+            else {
+                return
+        }
+        /*collect urls, excluding the preview image*/
+        DispatchQueue.global(qos: .userInitiated).async {
+            var images: [UIImage] = []
+            do {
+                let fileManager = FileManager.default
+                let photoUrls = try fileManager.contentsOfDirectory(at: photoCollectionFilePath, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
+                    .filter { (url) -> Bool in
+                        return url.lastPathComponent.contains("_preview") == false
+                    }.filter({ (url) -> Bool in
+                        return url.pathExtension.contains("jpeg") || url.pathExtension.contains("jpg")
+                    })
+                /*decode into images and update the collection view*/
+                for imageFilePath in photoUrls {
+                    if let image = UIImage(contentsOfFile: imageFilePath.relativePath) {
+                        images.append(image)
+                    }
+                }
+            } catch {
+                print(error.localizedDescription)
+            }
+            DispatchQueue.main.async {
+                complition(images)
+            }
+        }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
