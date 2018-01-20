@@ -22,15 +22,18 @@ struct PhotoCollectionService {
      
      - returns: ~/../app-sandbox/Libray/Cache/<name>/
      */
-    func filePathFor(photoCollection name: String) -> URL {
+    func filePathFor(photoCollection name: String?) -> URL {
         let fileManager = FileManager.default
         let documentsFilePath = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true)/*.appendingPathComponent(name, isDirectory: true) removes adding an extra folder*/
+        var photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true).appendingPathComponent("Images", isDirectory: true)
+        if let appendedPath = name {
+            photoCollectionFilePath.appendPathComponent(appendedPath, isDirectory: true)
+        }
         
         return photoCollectionFilePath
     }
     
-    func downloadZip(for url: URL, complition: @escaping (_ downloadLocation: URL?, Error?) -> ()) {
+    private func downloadZip(for url: URL, complition: @escaping (_ downloadLocation: URL?, Error?) -> ()) {
         let request = URLRequest(url: url)
         let session = URLSession.shared
         session.downloadTask(with: request) { (downloadDestination, response, error) in
@@ -77,30 +80,29 @@ struct PhotoCollectionService {
                     defer { dispatchGroup.leave() }
                     guard
                         error == nil,
-                        let filePath = downloadUrl
+                        let zippedFilePath = downloadUrl
                         else {
                             return //skip jsonCollection
                     }
                     collectionTitle = collectionTitle.lowercased()
-                    let cacheFilePath = self.filePathFor(photoCollection: collectionTitle)
+                    let imagesCacheFolderFilePath = self.filePathFor(photoCollection: nil)
                     do {
-                        try Zip.unzipFile(filePath, destination: cacheFilePath, innerFolderTitle: collectionTitle)
+                        try Zip.unzipFile(zippedFilePath, destination: imagesCacheFolderFilePath)
                         
                         /*Locate the _preview image*/
                         let unzippedFolderTitle = zipUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
-                        let collectionCacheFilePath = cacheFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
+                        let collectionCacheFilePath = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
                         let previewUrl = collectionCacheFilePath.appendingPathComponent("_preview.png")
                         let imageData = try Data(contentsOf: previewUrl)
                         let image = UIImage(data: imageData)
                         
+                        /*init PhotoCollection with collected data*/
                         let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: collectionCacheFilePath)
                         
                         collections.append(photoCollection)
                     } catch {
-                        //TODO: if Zip.unzip fails do i have to clear the
-                        //folder?
-                        print("ERROR: \(error.localizedDescription)")
-                        print(zipUrl.deletingPathExtension().lastPathComponent)
+                        let fileManager = FileManager.default
+                        try? fileManager.removeItem(at: zippedFilePath)
                         
                         return //skip jsonCollection
                     }
