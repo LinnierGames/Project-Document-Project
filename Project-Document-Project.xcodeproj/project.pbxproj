@@ -17,6 +17,8 @@
 		E9331BA6201015250012B7E7 /* PhotoCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9331BA5201015250012B7E7 /* PhotoCollection.swift */; };
 		E9331BA82010180D0012B7E7 /* PhotoCollectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9331BA72010180D0012B7E7 /* PhotoCollectionService.swift */; };
 		E9BD16F12012BE6E003C7127 /* CustomTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BD16F02012BE6E003C7127 /* CustomTableViewCell.swift */; };
+		E9BD16F42012F091003C7127 /* CustomCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BD16F32012F091003C7127 /* CustomCollectionViewCell.swift */; };
+		E9BD16F62012F0C2003C7127 /* PhotoCollectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BD16F52012F0C2003C7127 /* PhotoCollectionViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +36,8 @@
 		E9331BA5201015250012B7E7 /* PhotoCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCollection.swift; sourceTree = "<group>"; };
 		E9331BA72010180D0012B7E7 /* PhotoCollectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCollectionService.swift; sourceTree = "<group>"; };
 		E9BD16F02012BE6E003C7127 /* CustomTableViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTableViewCell.swift; sourceTree = "<group>"; };
+		E9BD16F32012F091003C7127 /* CustomCollectionViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomCollectionViewCell.swift; sourceTree = "<group>"; };
+		E9BD16F52012F0C2003C7127 /* PhotoCollectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCollectionViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +92,7 @@
 			children = (
 				E9331B9120100E270012B7E7 /* AppDelegate.swift */,
 				E9331B9320100E270012B7E7 /* ViewController.swift */,
+				E9BD16F52012F0C2003C7127 /* PhotoCollectionViewController.swift */,
 				E9331BA3201014420012B7E7 /* Supporting Files */,
 			);
 			path = "Project-Document-Project";
@@ -120,6 +125,7 @@
 			isa = PBXGroup;
 			children = (
 				E9BD16F02012BE6E003C7127 /* CustomTableViewCell.swift */,
+				E9BD16F32012F091003C7127 /* CustomCollectionViewCell.swift */,
 			);
 			name = Components;
 			sourceTree = "<group>";
@@ -254,7 +260,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				E9BD16F12012BE6E003C7127 /* CustomTableViewCell.swift in Sources */,
+				E9BD16F42012F091003C7127 /* CustomCollectionViewCell.swift in Sources */,
 				E9331B9420100E270012B7E7 /* ViewController.swift in Sources */,
+				E9BD16F62012F0C2003C7127 /* PhotoCollectionViewController.swift in Sources */,
 				E910624220116F2F009C9BD3 /* PhotoCollectionService+Zip.swift in Sources */,
 				E9331BA6201015250012B7E7 /* PhotoCollection.swift in Sources */,
 				E9331BA82010180D0012B7E7 /* PhotoCollectionService.swift in Sources */,
