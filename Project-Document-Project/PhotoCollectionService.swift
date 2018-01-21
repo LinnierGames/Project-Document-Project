@@ -22,7 +22,7 @@ struct PhotoCollectionService {
      
      - returns: ~/../app-sandbox/Libray/Cache/<name>/
      */
-    func filePathFor(photoCollection name: String?) -> URL {
+    private func filePathFor(photoCollection name: String?) -> URL {
         let fileManager = FileManager.default
         let documentsFilePath = fileManager.urls(for: .libraryDirectory, in: .userDomainMask).first!
         var photoCollectionFilePath = documentsFilePath.appendingPathComponent("Caches", isDirectory: true).appendingPathComponent("Images", isDirectory: true)
@@ -54,21 +54,28 @@ struct PhotoCollectionService {
         }.resume()
     }
     
+    /** <#Lorem ipsum dolor sit amet.#> */
     let baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
     
+    /**
+     <#Lorem ipsum dolor sit amet.#>
+     
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     */
     func getPhotoCollections(complition: @escaping ([PhotoCollection]) -> ()) {
-        if UserDefaults.standard.userHasDownloadedImages {
-            loadPhotoCollections(complition: complition)
+        if let collection = UserDefaults.standard.cacheDownloadedImages {
+            complition(collection)
         } else {
             fetchPhotoCollections(complition: complition)
         }
     }
     
-    func loadPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
-        
-    }
-    
-    func fetchPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
+    /**
+     <#Lorem ipsum dolor sit amet.#>
+     
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     */
+    private func fetchPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
         let request = URLRequest(url: baseUrl)
         let session = URLSession.shared
         session.dataTask(with: request) { (data, response, error) in
@@ -86,13 +93,13 @@ struct PhotoCollectionService {
             
             for jsonCollection in jsonCollections {
                 guard
-                    let zipUrl = URL(string: jsonCollection["zipped_images_url"] as! String),
+                    let zipDownloadUrl = URL(string: jsonCollection["zipped_images_url"] as! String),
                     var collectionTitle = jsonCollection["collection_name"] as! String?
                     else {
                     return //skip jsonCollection
                 }
                 dispatchGroup.enter()
-                self.downloadZip(for: zipUrl, complition: { (downloadUrl, error) in
+                self.downloadZip(for: zipDownloadUrl, complition: { (downloadUrl, error) in
                     defer { dispatchGroup.leave() }
                     guard
                         error == nil,
@@ -100,22 +107,18 @@ struct PhotoCollectionService {
                         else {
                             return //skip jsonCollection
                     }
-                    collectionTitle = collectionTitle.lowercased()
                     let imagesCacheFolderFilePath = self.filePathFor(photoCollection: nil)
                     do {
+                        /*Unzip to cache folder and rename unzipped folder to the title of the Collection*/
                         try Zip.unzipFile(zippedFilePath, destination: imagesCacheFolderFilePath)
                         
-                        /*Locate the _preview image*/
-                        let unzippedFolderTitle = zipUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
+                        let unzippedFolderTitle = zipDownloadUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
                         let collectionCacheFilePath = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
                         let newCollectionCacheFilePath = imagesCacheFolderFilePath.appendingPathComponent(collectionTitle, isDirectory: true)
                         try FileManager.default.moveItem(at: collectionCacheFilePath, to: newCollectionCacheFilePath)
-                        let previewUrl = newCollectionCacheFilePath.appendingPathComponent("_preview.png")
-                        let imageData = try Data(contentsOf: previewUrl)
-                        let image = UIImage(data: imageData)
                         
                         /*init PhotoCollection with collected data*/
-                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipUrl, previewImage: image, contentUrl: newCollectionCacheFilePath)
+                        let photoCollection = PhotoCollection(title: collectionTitle, zipUrl: zipDownloadUrl, contentLocation: newCollectionCacheFilePath.trimUserDirectory)
                         
                         collections.append(photoCollection)
                     } catch {
@@ -127,7 +130,7 @@ struct PhotoCollectionService {
                 })
             }
             dispatchGroup.notify(queue: .main, execute: {
-                UserDefaults.standard.userHasDownloadedImages = true
+                UserDefaults.standard.cacheDownloadedImages = collections
                 complition(collections)
             })
         }.resume()
@@ -140,7 +143,7 @@ struct PhotoCollectionService {
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    static func collectPhotos(from collection: PhotoCollection, complition: @escaping ([UIImage]) -> ()) {
+    static func collectPhotos(for collection: PhotoCollection, complition: @escaping ([UIImage]) -> ()) {
         guard
             let photoCollectionFilePath = collection.contentUrl
             else {

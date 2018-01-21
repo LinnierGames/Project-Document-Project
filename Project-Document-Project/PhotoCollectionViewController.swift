@@ -15,7 +15,7 @@ class PhotoCollectionViewController: UICollectionViewController {
     var photoCollection: PhotoCollection? {
         didSet {
             if let collection = photoCollection {
-                PhotoCollectionService.collectPhotos(from: collection, complition: { [unowned self] (images) in
+                PhotoCollectionService.collectPhotos(for: collection, complition: { [unowned self] (images) in
                     self.collectionOfImages = images
                     self.collectionView?.reloadData()
                 })

@@ -9,12 +9,19 @@
 import Foundation
 
 extension UserDefaults {
-    var userHasDownloadedImages: Bool {
+    
+    /** <#Lorem ipsum dolor sit amet.#> */
+    var cacheDownloadedImages: [PhotoCollection]? {
         get {
-            return self.bool(forKey: "hasCollectedImagesFromServer")
+            if let collectionData = self.object(forKey: "collectionCache") as! Data? {
+                return try? JSONDecoder().decode([PhotoCollection].self, from: collectionData)
+            } else {
+                return nil
+            }
         }
         set {
-            self.set(newValue, forKey: "hasCollectedImagesFromServer")
+            let collectionData = try? JSONEncoder().encode(newValue)
+            self.set(collectionData, forKey: "collectionCache")
         }
     }
 }

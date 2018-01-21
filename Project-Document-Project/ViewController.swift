@@ -34,7 +34,7 @@ class ViewController: UITableViewController {
     // MARK: - VOID METHODS
     
     private func updateUI() {
-        PhotoCollectionService().fetchPhotoCollections { [unowned self] (fetchedCollections) in
+        PhotoCollectionService().getPhotoCollections { (fetchedCollections) in
             self.collections = fetchedCollections
         }
     }

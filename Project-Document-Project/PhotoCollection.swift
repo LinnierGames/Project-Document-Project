@@ -9,15 +9,40 @@
 import Foundation
 import UIKit
 
-struct PhotoCollection: Encodable {
+struct PhotoCollection: Codable {
     let title: String
     let zipUrl: URL
-    var previewImage: UIImage? = nil
-    var contentUrl: URL?
+    
+    /** <#Lorem ipsum dolor sit amet.#> */
+    var previewImage: UIImage? {
+        guard
+            let previewUrl = self.contentUrl?.appendingPathComponent("_preview.png", isDirectory: true),
+            let imageData = try? Data(contentsOf: previewUrl),
+            let image = UIImage(data: imageData)
+            else {
+                return nil
+        }
+        
+        return image
+    }
+    
+    /** <#Lorem ipsum dolor sit amet.#> */
+    var contentLocation: String? = nil
+    
+    /** <#Lorem ipsum dolor sit amet.#> */
+    var contentUrl: URL? {
+        get {
+            return contentLocation?.appendingUserDirectory(isDirectory: true)
+        }
+        set {
+            contentLocation = newValue?.trimUserDirectory
+        }
+    }
     
     enum CodingKeys: String, CodingKey {
         case title = "collection_name"
         case zipUrl = "zipped_images_url"
+        case contentLocation = "location"
     }
 }
 
