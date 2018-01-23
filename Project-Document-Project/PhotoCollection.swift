@@ -9,6 +9,21 @@
 import Foundation
 import UIKit
 
+class PhotoCoding: NSObject, NSCoding {
+    
+    init(photoCollection: PhotoCollection) {
+        super.init()
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        super.init()
+    }
+    
+    func encode(with aCoder: NSCoder) {
+        
+    }
+}
+
 struct PhotoCollection: Codable {
     let title: String
     let zipUrl: URL
@@ -42,7 +57,6 @@ struct PhotoCollection: Codable {
     enum CodingKeys: String, CodingKey {
         case title = "collection_name"
         case zipUrl = "zipped_images_url"
-        case contentLocation = "location"
     }
 }
 

@@ -9,9 +9,23 @@
 import Foundation
 import Zip
 
-struct PhotoCollectionService {
+typealias ProgressCallback = (Float) -> Void
+
+class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelegate {
+    lazy var session: URLSession = {
+        return URLSession(
+            configuration: URLSessionConfiguration.default,
+            delegate: self,
+            delegateQueue: nil
+        )
+    }()
+    var progressCallback: ProgressCallback?
+    var progressData: Data?
+    var estimatedTotal: Int = 0
     
-    init() {
+    override init() {
+        super.init()
+        
         Zip.addCustomFileExtension("tmp")
     }
     
@@ -42,7 +56,7 @@ struct PhotoCollectionService {
      */
     private func downloadZip(for url: URL, complition: @escaping (_ downloadLocation: URL?, Error?) -> ()) {
         let request = URLRequest(url: url)
-        let session = URLSession.shared
+
         session.downloadTask(with: request) { (downloadDestination, response, error) in
             guard
                 error == nil,
@@ -54,6 +68,18 @@ struct PhotoCollectionService {
         }.resume()
     }
     
+    enum PhotoResult {
+        case done([PhotoCollection])
+        case downloading(Double)
+        case unzipping(Double)
+        case error(PhotoServiceError)
+    }
+    
+    enum PhotoServiceError: Error {
+        case couldNotParseJSON
+        case badRequest
+    }
+    
     /** <#Lorem ipsum dolor sit amet.#> */
     let baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
     
@@ -62,9 +88,9 @@ struct PhotoCollectionService {
      
      - parameter <#bar#>: <#Consectetur adipisicing elit.#>
      */
-    func getPhotoCollections(complition: @escaping ([PhotoCollection]) -> ()) {
+    func getPhotoCollections(complition: @escaping (PhotoResult) -> ()) {
         if let collection = UserDefaults.standard.cacheDownloadedImages {
-            complition(collection)
+            complition(PhotoResult.done(collection))
         } else {
             fetchPhotoCollections(complition: complition)
         }
@@ -75,18 +101,20 @@ struct PhotoCollectionService {
      
      - parameter <#bar#>: <#Consectetur adipisicing elit.#>
      */
-    private func fetchPhotoCollections(complition: @escaping ([PhotoCollection]) -> Void) {
+    private func fetchPhotoCollections(complition: @escaping (PhotoResult) -> Void) {
         let request = URLRequest(url: baseUrl)
         let session = URLSession.shared
-        session.dataTask(with: request) { (data, response, error) in
+        
+        let task = session.dataTask(with: request) { (data, response, error) in
             guard error == nil else {
-                return complition([])
+                return complition(.error(.badRequest))
             }
+            
             guard
                 let result = data,
                 let jsonCollections = try? JSONSerialization.jsonObject(with: result, options: .allowFragments) as! [[String: Any]]
                 else {
-                    return complition([])
+                    return complition(.error(.couldNotParseJSON))
             }
             var collections: [PhotoCollection] = []
             var dispatchGroup = DispatchGroup()
@@ -131,9 +159,12 @@ struct PhotoCollectionService {
             }
             dispatchGroup.notify(queue: .main, execute: {
                 UserDefaults.standard.cacheDownloadedImages = collections
-                complition(collections)
+                complition(PhotoResult.done(collections))
             })
-        }.resume()
+        }
+        
+        task.resume()
+        
     }
     
     /**
@@ -179,10 +210,24 @@ struct PhotoCollectionService {
 
 
 
+extension PhotoCollectionService {
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        progressData?.append(data)
+        let percentageDownloaded = Float(progressData!.count) / Float(estimatedTotal)
+        progressCallback?(percentageDownloaded)
+    }
+    
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        self.estimatedTotal = Int(response.expectedContentLength)
+        completionHandler(URLSession.ResponseDisposition.allow)
+    }
+}
 
 
 
-
-
-
+//extension URL: ExpressibleByStringLiteral {
+//    public init(stringLiteral value: StringLiteralType) {
+//        self = URL(string: value)!
+//    }
+//}
 

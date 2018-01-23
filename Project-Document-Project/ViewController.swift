@@ -35,7 +35,15 @@ class ViewController: UITableViewController {
     
     private func updateUI() {
         PhotoCollectionService().getPhotoCollections { (fetchedCollections) in
-            self.collections = fetchedCollections
+            switch fetchedCollections {
+            case .done(let photos):
+                self.collections = photos
+            case .downloading(let progress), .unzipping(let progress):
+                break
+            case .error(let error):
+                break
+            }
+            
         }
     }
     
