@@ -65,7 +65,7 @@
                             <outlet property="delegate" destination="vdq-To-Eop" id="I8U-S3-7OR"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="Collections" id="fz7-HS-se9"/>
+                    <navigationItem key="navigationItem" title="Collections" prompt="Downloading Collections" id="fz7-HS-se9"/>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="nmg-bL-SB1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>

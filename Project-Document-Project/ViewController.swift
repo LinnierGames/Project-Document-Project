@@ -45,14 +45,20 @@ class ViewController: UITableViewController {
     private func updateUI() {
         PhotoCollectionService().getPhotoCollections(
             progress: { (progressValue) in
-                print(progressValue)
+                self.navigationItem.title = String(progressValue)
         },
             complition: { (result) in
                 switch result {
+                case .finshedDownloadCollection:
+                    self.navigationItem.prompt = "Downloading Images"
                 case .done(let photos):
                     self.collections = photos
+                    self.navigationItem.prompt = nil
                 case .error(let error):
-                    print(error.localizedDescription)
+                    self.navigationItem.prompt = "Unexpected Error"
+                    let alertError = UIAlertController(title: nil, message: String(describing: error), preferredStyle: .alert)
+                    alertError.addAction(UIAlertAction(title: "Dismiss", style: .default))
+                    self.present(alertError, animated: true)
                 default: break
                 }
         })
