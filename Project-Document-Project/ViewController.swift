@@ -42,6 +42,7 @@ class ViewController: UITableViewController {
                 break
             case .error(let error):
                 break
+            default: break
             }
             
         }

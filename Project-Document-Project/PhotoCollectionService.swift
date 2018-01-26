@@ -54,6 +54,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
         case done([PhotoCollection])
         case downloading(Double)
         case unzipping(Double)
+        case finishedUnzipping(URL)
         case error(PhotoServiceError)
     }
     
@@ -61,6 +62,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
         case couldNotParseJSON
         case badRequest(String)
         case zipCouldNotSaveToTempFolder
+        case FailedToUnzip
     }
     
     /** <#Lorem ipsum dolor sit amet.#> */
@@ -97,56 +99,72 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
             /* json -> Models */
             guard
                 let result = data,
-                var photoCollections = try? JSONDecoder().decode([PhotoCollection].self, from: result)
+                let photoCollections = try? JSONDecoder().decode([PhotoCollection].self, from: result)
                 else {
                     return photoResultHandler(.error(.couldNotParseJSON))
             }
             
-            /* Download the zips */
             let dispatchGroup = DispatchGroup()
             for aPhotoCollection in photoCollections {
                 dispatchGroup.enter()
-                /* download a zip */
-                let zipDownloadUrl = aPhotoCollection.zipUrl
-                self.downloadZip(for: zipDownloadUrl, complition: { (tempFilePath, error) in
-                    defer { dispatchGroup.leave() }
-                    guard
-                        error == nil else {
-                            return photoResultHandler(.error(.badRequest(error!.localizedDescription)))
+                self.fetchZip(from: aPhotoCollection, complition: { (result) in
+                    switch result {
+                    case .finishedUnzipping(let url):
+                        aPhotoCollection.contentUrl = url
+                    default: break
                     }
-                    
-                    guard let zippedFilePath = tempFilePath else {
-                        return photoResultHandler(.error(.zipCouldNotSaveToTempFolder))
-                    }
-                    
-                    /* Unzip to cache folder and rename unzipped folder to the title of the Collection */
-                    do {
-                        let imagesCacheFolderFilePath = FileManager.default.imagesCacheFolder()
-                        try Zip.unzipFile(zippedFilePath, destination: imagesCacheFolderFilePath)
-                        
-                        /* Rename unzipped folder to collection title and reference location of unzipped folder */
-                        let unzippedFolderTitle = zipDownloadUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
-                        let collectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
-                        let newCollectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(aPhotoCollection.title, isDirectory: true)
-                        try FileManager.default.moveItem(at: collectionCacheFileUrl, to: newCollectionCacheFileUrl) //Rename old title to new title
-                        
-                        aPhotoCollection.contentUrl = newCollectionCacheFileUrl
-                    } catch {
-                        let fileManager = FileManager.default
-                        try? fileManager.removeItem(at: zippedFilePath)
-                        
-                        return //skip jsonCollection
-                    }
+                    dispatchGroup.leave()
+                })
+                dispatchGroup.notify(queue: .main, execute: {
+                    UserDefaults.standard.cacheDownloadedImages = photoCollections
+                    photoResultHandler(PhotoResult.done(photoCollections))
                 })
             }
-            dispatchGroup.notify(queue: .main, execute: {
-                UserDefaults.standard.cacheDownloadedImages = photoCollections
-                photoResultHandler(PhotoResult.done(photoCollections))
-            })
         }
         
         task.resume()
         
+    }
+    
+    /**
+     <#Lorem ipsum dolor sit amet.#>
+     
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     
+     - returns: <#Sed do eiusmod tempor.#>
+     */
+    private func fetchZip(from photoCollection: PhotoCollection, complition: @escaping (PhotoResult) -> ()) {
+        /* download a zip */
+        let zipDownloadUrl = photoCollection.zipUrl
+        self.downloadZip(for: zipDownloadUrl, complition: { (tempFilePath, error) in
+            guard
+                error == nil else {
+                    return complition(.error(.badRequest(error!.localizedDescription)))
+            }
+            
+            guard let zippedFilePath = tempFilePath else {
+                return complition(.error(.zipCouldNotSaveToTempFolder))
+            }
+            
+            /* Unzip to cache folder and rename unzipped folder to the title of the Collection */
+            do {
+                let imagesCacheFolderFilePath = FileManager.default.imagesCacheFolder()
+                try Zip.unzipFile(zippedFilePath, destination: imagesCacheFolderFilePath)
+                
+                /* Rename unzipped folder to collection title and reference location of unzipped folder */
+                let unzippedFolderTitle = zipDownloadUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
+                let collectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
+                let newCollectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(photoCollection.title, isDirectory: true)
+                try FileManager.default.moveItem(at: collectionCacheFileUrl, to: newCollectionCacheFileUrl) //Rename old title to new title
+                
+                complition(.finishedUnzipping(newCollectionCacheFileUrl))
+            } catch {
+                let fileManager = FileManager.default
+                try? fileManager.removeItem(at: zippedFilePath)
+                
+                return complition(.error(.FailedToUnzip))
+            }
+        })
     }
     
     /**
