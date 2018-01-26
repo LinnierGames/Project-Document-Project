@@ -13,7 +13,7 @@ import UIKit
  Front facing class to give a title and the contentPath of the collection of
  photos
  */
-class PhotoCollection: Decodable {
+class PhotoCollection: NSObject, Decodable {
     
     /** Title of the photo collection */
     var title: String
@@ -60,10 +60,8 @@ class PhotoCollection: Decodable {
         case title = "collection_name"
         case zipUrl = "zipped_images_url"
     }
-}
-
-extension PhotoCollection: CustomStringConvertible {
-    var description: String {
+    
+    override var description: String {
         return "\(title)"
     }
 }

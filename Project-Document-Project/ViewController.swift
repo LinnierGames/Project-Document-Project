@@ -8,7 +8,7 @@
 
 import UIKit
 
-class ViewController: UITableViewController {
+class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
     
     private enum ViewState {
         case DownloadingCollections
@@ -24,6 +24,8 @@ class ViewController: UITableViewController {
             tableView.reloadData()
         }
     }
+    
+    private var collectionDownloadProgress: [PhotoCollection: Double] = [:]
 
     // MARK: - RETURN VALUES
     
@@ -32,25 +34,37 @@ class ViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
-        
         let photoCollection = collections[indexPath.row]
-        cell.configure(photoCollection: photoCollection)
+        let isDownloading = collectionDownloadProgress[photoCollection] ?? 0.0 != 1.0
         
-        return cell
+        if isDownloading { //downloading zip
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell downloading", for: indexPath)
+            let progress = collectionDownloadProgress[photoCollection] ?? 0.0
+            
+            cell.textLabel!.text = "\(progress * 100)%"
+            cell.detailTextLabel!.text = photoCollection.title
+            
+            return cell
+        } else { //done
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
+            
+            cell.configure(photoCollection: photoCollection)
+            
+            return cell
+        }
+        
+        
+        
+        
     }
     
     // MARK: - VOID METHODS
     
     private func updateUI() {
-        PhotoCollectionService().getPhotoCollections(
-            progress: { (progressValue) in
-                self.navigationItem.title = String(progressValue)
-        },
-            complition: { (result) in
+        let photoService = PhotoCollectionService()
+        photoService.delegate = self
+        photoService.getPhotoCollections { (result) in
                 switch result {
-                case .finshedDownloadCollection:
-                    self.navigationItem.prompt = "Downloading Images"
                 case .done(let photos):
                     self.collections = photos
                     self.navigationItem.prompt = nil
@@ -59,9 +73,8 @@ class ViewController: UITableViewController {
                     let alertError = UIAlertController(title: nil, message: String(describing: error), preferredStyle: .alert)
                     alertError.addAction(UIAlertAction(title: "Dismiss", style: .default))
                     self.present(alertError, animated: true)
-                default: break
                 }
-        })
+        }
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -78,6 +91,20 @@ class ViewController: UITableViewController {
             default: break
             }
         }
+    }
+    
+    // MARK: Photo Collection Service Delegate
+    
+    func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingCollection collection: [PhotoCollection]) {
+        self.navigationItem.prompt = "Downloading Images"
+        self.collections = collection
+    }
+    
+    func photoCollectionService(_ service: PhotoCollectionService, didRecivedProgress progress: Double, for photoCollection: PhotoCollection) {
+        collectionDownloadProgress[photoCollection] = progress
+        
+        //TODO: update only by the cell vs the whole table
+        self.tableView.reloadData()
     }
     
     // MARK: - IBACTIONS

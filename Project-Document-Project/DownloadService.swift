@@ -21,7 +21,7 @@ final class DownloadService: NSObject {
                              delegate: self, delegateQueue: nil)
     }
     
-    func download(request: URLRequest) -> DownloadTask {
+    func download(request: URLRequest) -> PhotoCollectionDataTask {
         let task = session.dataTask(with: request)
         let downloadTask = PhotoCollectionDataTask(task: task)
         downloadTasks.append(downloadTask)

@@ -11,18 +11,19 @@ import Zip
 
 typealias ProgressCallback = (Float) -> Void
 
+@objc protocol PhotoCollectionServiecDelegate {
+    @objc optional func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingCollection collection: [PhotoCollection])
+    
+    @objc optional func photoCollectionService(_ service: PhotoCollectionService, didRecivedProgress progress: Double, for photoCollection: PhotoCollection)
+}
+
 class PhotoCollectionService: NSObject {
     
     lazy var session: URLSession = {
-        return URLSession(
-            configuration: URLSessionConfiguration.default,
-            delegate: self,
-            delegateQueue: nil
-        )
+        return URLSession.shared
     }()
     
-    //TODO: use progress call backs
-    private var downloadTasks = [PhotoCollectionDataTask]()
+    var photoCollectionDataTasks: [PhotoCollection: PhotoCollectionDataTask] = [:]
     
     private override init() {
         super.init()
@@ -42,10 +43,10 @@ class PhotoCollectionService: NSObject {
         }
     }
     
+    weak var delegate: PhotoCollectionServiecDelegate?
+    
     public enum PhotoResult {
         case done([PhotoCollection])
-        case finshedDownloadCollection
-        case finishedUnzipping(URL)
         case error(PhotoServiceError)
     }
     
@@ -102,13 +103,14 @@ class PhotoCollectionService: NSObject {
         jsonTask.completionHandler = { result in
             switch result {
             case .success(let jsonData):
-                photoResultHandler(.finshedDownloadCollection) //notify caller of finished step
                 /* json -> Models */
                 guard
                     let photoCollections = try? JSONDecoder().decode([PhotoCollection].self, from: jsonData)
                     else {
                         return photoResultHandler(.error(.couldNotParseJSON))
                 }
+                
+                self.delegate?.photoCollectionService?(self, didFinishDownloadingCollection: photoCollections)
                 
                 /* Fetch Zips and save their unzipped location to aPhotoCollection */
                 let dispatchGroup = DispatchGroup()
@@ -150,23 +152,12 @@ class PhotoCollectionService: NSObject {
                             print("ERROR \(err.localizedDescription)")
                         }
                     }
-                    downloadTask.progressHandler = progress
+                    downloadTask.progressHandler = { progress in
+                        self.delegate?.photoCollectionService?(self, didRecivedProgress: progress, for: aPhotoCollection)
+                    }
                     downloadTask.resume()
                     
-                    
-                    
-                    
-//                    self.fetchZip(from: aPhotoCollection, complition: { (photoResult) in
-//                        switch photoResult {
-//                        case .finishedUnzipping(let url):
-//                            aPhotoCollection.contentUrl = url
-//                        case .error:
-//                            //TODO: Save errors to aPhotoCollection
-//                            photoResultHandler(photoResult)
-//                        default: break
-//                        }
-//                        dispatchGroup.leave()
-//                    })
+                    //self.photoCollectionDataTasks[aPhotoCollection] = downloadTask
                 }
                 /* Once finished, call .done([PhotoCollection]) upstream */
                 dispatchGroup.notify(queue: .main, execute: {
@@ -221,7 +212,7 @@ class PhotoCollectionService: NSObject {
                 let newCollectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(photoCollection.title, isDirectory: true)
 //                try FileManager.default.moveItem(at: collectionCacheFileUrl, to: newCollectionCacheFileUrl) //Rename old title to new title
                 
-                complition(.finishedUnzipping(newCollectionCacheFileUrl))
+//                complition(.finishedUnzipping(newCollectionCacheFileUrl))
             } catch {
                 let fileManager = FileManager.default
                 try? fileManager.removeItem(at: zippedFilePath)
@@ -289,44 +280,6 @@ class PhotoCollectionService: NSObject {
                 }
             } catch {
                 complition(nil, error)
-            }
-        }
-    }
-}
-
-extension PhotoCollectionService: URLSessionDataDelegate {
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
-                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        
-        guard let task = downloadTasks.first(where: { $0.task == dataTask }) else {
-            completionHandler(.cancel)
-            return
-        }
-        task.expectedContentLength = response.expectedContentLength
-        completionHandler(.allow)
-    }
-    
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        guard let task = downloadTasks.first(where: { $0.task == dataTask }) else {
-            return
-        }
-        task.buffer.append(data)
-        let percentageDownloaded = Double(task.buffer.count) / Double(task.expectedContentLength)
-        DispatchQueue.main.async {
-            task.progressHandler?(percentageDownloaded)
-        }
-    }
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        guard let index = downloadTasks.index(where: { $0.task == task }) else {
-            return
-        }
-        let task = downloadTasks.remove(at: index)
-        DispatchQueue.main.async {
-            if let e = error {
-                task.completionHandler?(.failure(e))
-            } else {
-                task.completionHandler?(.success(task.buffer))
             }
         }
     }
