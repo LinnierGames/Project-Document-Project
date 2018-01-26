@@ -8,6 +8,7 @@
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13772"/>
         <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
         <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
+        <capability name="Constraints with non-1.0 multipliers" minToolsVersion="5.1"/>
         <capability name="Stack View standard spacing" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -59,29 +60,51 @@
                                     <segue destination="20b-iB-8zQ" kind="show" identifier="show photos" id="41s-1u-lU8"/>
                                 </connections>
                             </tableViewCell>
-                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" accessoryType="disclosureIndicator" indentationWidth="10" reuseIdentifier="cell downloading" textLabel="gaL-6g-Dsn" detailTextLabel="Tar-Gq-ZDF" rowHeight="96" style="IBUITableViewCellStyleValue2" id="R5M-ol-kOV">
+                            <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" accessoryType="disclosureIndicator" indentationWidth="10" reuseIdentifier="cell downloading" rowHeight="96" id="R5M-ol-kOV" customClass="CustomTableViewCell" customModule="Project_Document_Project" customModuleProvider="target">
                                 <rect key="frame" x="0.0" y="124" width="375" height="96"/>
                                 <autoresizingMask key="autoresizingMask"/>
                                 <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="R5M-ol-kOV" id="EM1-jz-Ewm">
                                     <rect key="frame" x="0.0" y="0.0" width="341" height="95.5"/>
                                     <autoresizingMask key="autoresizingMask"/>
                                     <subviews>
-                                        <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="progress" textAlignment="right" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="gaL-6g-Dsn">
-                                            <rect key="frame" x="16" y="40" width="91" height="16"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <fontDescription key="fontDescription" type="system" pointSize="13"/>
-                                            <nil key="textColor"/>
-                                            <nil key="highlightedColor"/>
-                                        </label>
-                                        <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="Detail" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="Tar-Gq-ZDF">
-                                            <rect key="frame" x="113" y="40" width="35" height="16"/>
-                                            <autoresizingMask key="autoresizingMask"/>
-                                            <fontDescription key="fontDescription" type="system" pointSize="13"/>
-                                            <nil key="textColor"/>
-                                            <nil key="highlightedColor"/>
-                                        </label>
+                                        <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Jhk-qd-PNQ">
+                                            <rect key="frame" x="0.0" y="0.0" width="90" height="96"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" heightSizable="YES"/>
+                                            <color key="backgroundColor" red="0.92143100499999997" green="0.92145264149999995" blue="0.92144101860000005" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                        </imageView>
+                                        <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="9rl-cR-lBD">
+                                            <rect key="frame" x="98" y="11" width="235" height="74"/>
+                                            <subviews>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="POA-5X-llg">
+                                                    <rect key="frame" x="0.0" y="0.0" width="235" height="61.5"/>
+                                                    <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                                    <nil key="textColor"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Label" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="yfO-UY-3A6">
+                                                    <rect key="frame" x="0.0" y="61.5" width="235" height="12.5"/>
+                                                    <fontDescription key="fontDescription" style="UICTFontTextStyleCaption1"/>
+                                                    <color key="textColor" white="0.66666666666666663" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                                    <nil key="highlightedColor"/>
+                                                </label>
+                                            </subviews>
+                                            <constraints>
+                                                <constraint firstItem="yfO-UY-3A6" firstAttribute="height" secondItem="POA-5X-llg" secondAttribute="height" multiplier="1:5" id="UUA-RZ-nkm"/>
+                                            </constraints>
+                                        </stackView>
                                     </subviews>
+                                    <constraints>
+                                        <constraint firstAttribute="trailingMargin" secondItem="9rl-cR-lBD" secondAttribute="trailing" id="15Z-fg-b0c"/>
+                                        <constraint firstAttribute="bottomMargin" secondItem="9rl-cR-lBD" secondAttribute="bottom" id="GjR-XK-OUh"/>
+                                        <constraint firstItem="9rl-cR-lBD" firstAttribute="top" secondItem="EM1-jz-Ewm" secondAttribute="topMargin" id="VL3-q9-iZc"/>
+                                        <constraint firstItem="9rl-cR-lBD" firstAttribute="leading" secondItem="EM1-jz-Ewm" secondAttribute="leading" constant="98" id="n3q-F8-ngt"/>
+                                    </constraints>
                                 </tableViewCellContentView>
+                                <connections>
+                                    <outlet property="labelSubtitle" destination="yfO-UY-3A6" id="TVN-P0-R2I"/>
+                                    <outlet property="labelTitle" destination="POA-5X-llg" id="pmF-ZG-SK8"/>
+                                    <outlet property="loadingView" destination="Jhk-qd-PNQ" id="LnJ-Xt-yd9"/>
+                                </connections>
                             </tableViewCell>
                         </prototypes>
                         <connections>
@@ -93,7 +116,7 @@
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="nmg-bL-SB1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="226" y="57"/>
+            <point key="canvasLocation" x="224.80000000000001" y="56.221889055472268"/>
         </scene>
         <!--Navigation Controller-->
         <scene sceneID="ggo-It-bHi">

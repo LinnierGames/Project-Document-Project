@@ -35,14 +35,13 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let photoCollection = collections[indexPath.row]
-        let isDownloading = collectionDownloadProgress[photoCollection] ?? 0.0 != 1.0
+        let downloadProgress = collectionDownloadProgress[photoCollection] ?? 0.0
+        let isDownloading = downloadProgress != 1.0
         
         if isDownloading { //downloading zip
-            let cell = tableView.dequeueReusableCell(withIdentifier: "cell downloading", for: indexPath)
-            let progress = collectionDownloadProgress[photoCollection] ?? 0.0
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell downloading", for: indexPath) as! CustomTableViewCell
             
-            cell.textLabel!.text = "\(progress * 100)%"
-            cell.detailTextLabel!.text = photoCollection.title
+            cell.configure(photoCollection: photoCollection, progress: downloadProgress)
             
             return cell
         } else { //done
@@ -52,10 +51,6 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
             
             return cell
         }
-        
-        
-        
-        
     }
     
     // MARK: - VOID METHODS
@@ -64,17 +59,21 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
         let photoService = PhotoCollectionService()
         photoService.delegate = self
         photoService.getPhotoCollections { (result) in
-                switch result {
-                case .done(let photos):
-                    self.collections = photos
+            switch result {
+            case .done(let photos):
+                self.collections = photos
+                UIView.animate(withDuration: 0.25, animations: {
                     self.navigationItem.prompt = nil
-                case .error(let error):
-                    self.navigationItem.prompt = "Unexpected Error"
-                    let alertError = UIAlertController(title: nil, message: String(describing: error), preferredStyle: .alert)
-                    alertError.addAction(UIAlertAction(title: "Dismiss", style: .default))
-                    self.present(alertError, animated: true)
-                }
+                })
+            case .error(let error):
+                self.navigationItem.prompt = "Unexpected Error"
+                let alertError = UIAlertController(title: nil, message: String(describing: error), preferredStyle: .alert)
+                alertError.addAction(UIAlertAction(title: "Dismiss", style: .default))
+                self.present(alertError, animated: true)
+            }
+            UIApplication.shared.isNetworkActivityIndicatorVisible = false
         }
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
