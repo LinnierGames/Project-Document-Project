@@ -14,14 +14,20 @@ extension UserDefaults {
     var cacheDownloadedImages: [PhotoCollection]? {
         get {
             if let collectionData = self.object(forKey: "collectionCache") as! Data? {
-                return try? JSONDecoder().decode([PhotoCollection].self, from: collectionData)
+                guard let photoCollectionCodings = try? JSONDecoder().decode([PhotoCollectionCoding].self, from: collectionData) else {
+                    return nil
+                }
+                
+                return photoCollectionCodings.map { PhotoCollection.init($0) }
             } else {
                 return nil
             }
         }
         set {
-            let collectionData = try? JSONEncoder().encode(newValue)
-            self.set(collectionData, forKey: "collectionCache")
+            if let collectionCodings = newValue?.map({ PhotoCollectionCoding.init($0) }) {
+                let collectionData = try? JSONEncoder().encode(collectionCodings)
+                self.set(collectionData, forKey: "collectionCache")
+            }
         }
     }
 }

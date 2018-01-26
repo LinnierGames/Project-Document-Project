@@ -9,7 +9,7 @@
 import Foundation
 extension URL {
     
-    /** <#Lorem ipsum dolor sit amet.#> */
+    /** Removes the generated path from the app sandbox */
     var trimUserDirectory: String {
         let fMgr = FileManager.default
         let appSandboxTitle = fMgr.urls(for: .documentDirectory, in: .userDomainMask).first!.deletingLastPathComponent().lastPathComponent
@@ -28,7 +28,7 @@ extension URL {
 
 extension String {
     
-    /** <#Lorem ipsum dolor sit amet.#> */
+    /** Attaches self to the generated app sandbox */
     func appendingUserDirectory(isDirectory: Bool) -> URL {
         let fMgr = FileManager.default
         

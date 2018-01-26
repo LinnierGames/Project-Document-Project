@@ -9,24 +9,19 @@
 import Foundation
 import UIKit
 
-class PhotoCoding: NSObject, NSCoding {
+/**
+ Front facing class to give a title and the contentPath of the collection of
+ photos
+ */
+class PhotoCollection: Codable {
+    var title: String
+    var zipUrl: URL
     
-    init(photoCollection: PhotoCollection) {
-        super.init()
+    init(title: String, zipUrl: URL, contentLocation: String? = nil) {
+        self.title = title
+        self.zipUrl = zipUrl
+        self.contentLocation = contentLocation
     }
-    
-    required init?(coder aDecoder: NSCoder) {
-        super.init()
-    }
-    
-    func encode(with aCoder: NSCoder) {
-        
-    }
-}
-
-struct PhotoCollection: Codable {
-    let title: String
-    let zipUrl: URL
     
     /** <#Lorem ipsum dolor sit amet.#> */
     var previewImage: UIImage? {
@@ -42,7 +37,7 @@ struct PhotoCollection: Codable {
     }
     
     /** <#Lorem ipsum dolor sit amet.#> */
-    var contentLocation: String? = nil
+    fileprivate var contentLocation: String? = nil
     
     /** <#Lorem ipsum dolor sit amet.#> */
     var contentUrl: URL? {
@@ -63,5 +58,30 @@ struct PhotoCollection: Codable {
 extension PhotoCollection: CustomStringConvertible {
     var description: String {
         return "\(title)"
+    }
+}
+
+/**
+ Decode and encode a PhotoCollection into UserDefaults
+ - warning: only stores title and contentUrl from the collection
+ */
+struct PhotoCollectionCoding: Codable {
+    let title: String
+    let zipUrl: URL
+    let contentFilePath: String
+    
+    init?(_ photoCollection: PhotoCollection) {
+        self.title = photoCollection.title
+        self.zipUrl = photoCollection.zipUrl
+        guard let path = photoCollection.contentLocation else {
+            return nil
+        }
+        self.contentFilePath = path
+    }
+}
+
+extension PhotoCollection {
+    convenience init(_ photoCollectionCoding: PhotoCollectionCoding) {
+        self.init(title: photoCollectionCoding.title, zipUrl: photoCollectionCoding.zipUrl, contentLocation: photoCollectionCoding.contentFilePath)
     }
 }
