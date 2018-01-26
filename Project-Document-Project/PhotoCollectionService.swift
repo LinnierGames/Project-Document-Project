@@ -12,6 +12,7 @@ import Zip
 typealias ProgressCallback = (Float) -> Void
 
 class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelegate {
+    
     lazy var session: URLSession = {
         return URLSession(
             configuration: URLSessionConfiguration.default,
@@ -19,14 +20,14 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
             delegateQueue: nil
         )
     }()
+    
+    //TODO: use progress call backs
     var progressCallback: ProgressCallback?
     var progressData: Data?
     var estimatedTotal: Int = 0
     
-    override init() {
+    private override init() {
         super.init()
-        
-        Zip.addCustomFileExtension("tmp")
     }
     
     /**
@@ -36,21 +37,14 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    private func downloadZip(for url: URL, complition: @escaping (_ downloadLocation: URL?, Error?) -> ()) {
-        let request = URLRequest(url: url)
-
-        session.downloadTask(with: request) { (downloadDestination, response, error) in
-            guard
-                error == nil,
-                let filePath = downloadDestination
-                else {
-                return complition(downloadDestination, error)
-            }
-            complition(filePath, nil)
-        }.resume()
+    public init(_ extentions: [String] = ["tmp"]) {
+        
+        for extention in extentions {
+            Zip.addCustomFileExtension(extention)
+        }
     }
     
-    enum PhotoResult {
+    public enum PhotoResult {
         case done([PhotoCollection])
         case downloading(Double)
         case unzipping(Double)
@@ -58,22 +52,34 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
         case error(PhotoServiceError)
     }
     
-    enum PhotoServiceError: Error {
+    public enum PhotoServiceError: Error {
         case couldNotParseJSON
         case badRequest(String)
         case zipCouldNotSaveToTempFolder
         case FailedToUnzip
     }
     
-    /** <#Lorem ipsum dolor sit amet.#> */
-    let baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
+    /** API call to collect the list of photo collections */
+    public var baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
     
     /**
-     <#Lorem ipsum dolor sit amet.#>
+     Collect the list of photo collections, fetching their titles and images
+     include the preview image. If photo collections have been cached, into
+     UserDefaults, complition will return the content that was saved from a
+     pervious fetch. Otherwise, a network call will be made to fetch the
+     collections.
      
-     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     - parameter PhotoResult:
+        - done: finshed downloading photo collection and their titles. Use
+     the associated type to read the collection
+        - error: PhotoServiceError
+            - Could Not Parse JSON: contents of base url may be incorrect after
+            downloading
+            - Bad Request: read the assocaited type for a message
+            - Zipp could not be saved
+            - Failed to Unzip: unsupported file type
      */
-    func getPhotoCollections(complition: @escaping (PhotoResult) -> ()) {
+    public func getPhotoCollections(complition: @escaping (_ PhotoResult: PhotoResult) -> ()) {
         if let collection = UserDefaults.standard.cacheDownloadedImages {
             complition(PhotoResult.done(collection))
         } else {
@@ -82,9 +88,11 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     }
     
     /**
-     <#Lorem ipsum dolor sit amet.#>
+     Comense the fetching of all PhotoCollections. Starting with downloading
+     the json data from the baseUrl.
      
-     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     - parameter photoResultHandler: must notify upstream to the origianl caller
+     of any progress, error, or complition of downloading
      */
     private func fetchPhotoCollections(photoResultHandler: @escaping (PhotoResult) -> Void) {
         let request = URLRequest(url: baseUrl)
@@ -104,17 +112,22 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
                     return photoResultHandler(.error(.couldNotParseJSON))
             }
             
+            /* Fetch Zips and save their unzipped location to aPhotoCollection */
             let dispatchGroup = DispatchGroup()
             for aPhotoCollection in photoCollections {
                 dispatchGroup.enter()
-                self.fetchZip(from: aPhotoCollection, complition: { (result) in
-                    switch result {
+                self.fetchZip(from: aPhotoCollection, complition: { (photoResult) in
+                    switch photoResult {
                     case .finishedUnzipping(let url):
                         aPhotoCollection.contentUrl = url
+                    case .error:
+                        photoResultHandler(photoResult)
                     default: break
                     }
                     dispatchGroup.leave()
                 })
+                
+                /* Once finished, call .done([PhotoCollection]) upstream */
                 dispatchGroup.notify(queue: .main, execute: {
                     UserDefaults.standard.cacheDownloadedImages = photoCollections
                     photoResultHandler(PhotoResult.done(photoCollections))
@@ -127,15 +140,22 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     }
     
     /**
-     <#Lorem ipsum dolor sit amet.#>
+     Download, unzip, and save the contents, or images, of the
+     photoCollection.zipUrl.
      
-     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
+     - parameter photoCollection: collection to download the zip from
+     - parameter Result: either containing the destination url of the unzipped
+     download or an error
+         - .finishedUnzipping: contains the destination url of the unzipped
+         folder of images
+         - .error:
+             - zipCouldNotSaveToTempFolder
+             - failedToUnzip
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    private func fetchZip(from photoCollection: PhotoCollection, complition: @escaping (PhotoResult) -> ()) {
-        /* download a zip */
-        let zipDownloadUrl = photoCollection.zipUrl
+    private func fetchZip(from photoCollection: PhotoCollection, complition: @escaping (_ Result: PhotoResult) -> ()) {
+        let zipDownloadUrl = photoCollection.zipUrl!
         self.downloadZip(for: zipDownloadUrl, complition: { (tempFilePath, error) in
             guard
                 error == nil else {
@@ -166,15 +186,36 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
             }
         })
     }
+
+    /**
+     Fires a downloadTask of the shared url session, session, and returns the
+     temp location of the download
+     
+     - parameter url: what to request over the internet
+     - parameter DownloadLocation: contains the temp location
+     - parameter Error
+     */
+    private func downloadZip(for url: URL, complition: @escaping (_ DownloadLocation: URL?, _ Error: Error?) -> ()) {
+        let request = URLRequest(url: url)
+        session.downloadTask(with: request) { (downloadDestination, response, error) in
+            guard
+                error == nil,
+                let filePath = downloadDestination
+                else {
+                    return complition(downloadDestination, error)
+            }
+            complition(filePath, nil)
+        }.resume()
+    }
     
     /**
-     <#Lorem ipsum dolor sit amet.#>
+     Using the given collection.contentUrl, iterate through the urls for only
+     the images excluding the preview image.
      
-     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
-     
-     - returns: <#Sed do eiusmod tempor.#>
+     - parameter collection: what collection to filter through its images
+     - Images: the list of images
      */
-    static func collectPhotos(for collection: PhotoCollection, complition: @escaping ([UIImage]) -> ()) {
+    static func collectPhotos(for collection: PhotoCollection, complition: @escaping ([UIImage]?, _ Error: Error?) -> ()) {
         guard
             let photoCollectionFilePath = collection.contentUrl
             else {
@@ -185,23 +226,25 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
             var images: [UIImage] = []
             do {
                 let fileManager = FileManager.default
+                /* filter out the _preview image and only collect jpeg and jpg */
                 let photoUrls = try fileManager.contentsOfDirectory(at: photoCollectionFilePath, includingPropertiesForKeys: nil, options: .skipsHiddenFiles)
                     .filter { (url) -> Bool in
                         return url.lastPathComponent.contains("_preview") == false
                     }.filter({ (url) -> Bool in
                         return url.pathExtension.contains("jpeg") || url.pathExtension.contains("jpg")
                     })
+                
                 /*decode into images and update the collection view*/
                 for imageFilePath in photoUrls {
                     if let image = UIImage(contentsOfFile: imageFilePath.relativePath) {
                         images.append(image)
                     }
                 }
+                DispatchQueue.main.async {
+                    complition(images, nil)
+                }
             } catch {
-                print(error.localizedDescription)
-            }
-            DispatchQueue.main.async {
-                complition(images)
+                complition(nil, error)
             }
         }
     }

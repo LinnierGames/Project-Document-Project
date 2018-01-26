@@ -10,7 +10,10 @@ import Foundation
 
 extension UserDefaults {
     
-    /** <#Lorem ipsum dolor sit amet.#> */
+    /**
+     Store and read the collection of PhotoCollection
+     - warning: [PhotoCollection] is mapped to [PhotoCollectionCoding]
+     */
     var cacheDownloadedImages: [PhotoCollection]? {
         get {
             if let collectionData = self.object(forKey: "collectionCache") as! Data? {

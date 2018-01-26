@@ -13,9 +13,10 @@ extension Zip {
     
     /**
      Unzip into destination url and clear the downloaded zip from the tmp folder
-     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
-     
-     - returns: <#Sed do eiusmod tempor.#>
+     - parameter zipFilePath: file to unzip
+     - parameter destination: url to unzip the contents to
+     - throws: rethrows from Zip.unzipFile(..) and FileManager when deleting the
+     zipFilePath
      */
     public class func unzipFile(_ zipFilePath: URL, destination: URL) throws {
         do {

@@ -13,17 +13,27 @@ import UIKit
  Front facing class to give a title and the contentPath of the collection of
  photos
  */
-class PhotoCollection: Codable {
-    var title: String
-    var zipUrl: URL
+class PhotoCollection: Decodable {
     
-    init(title: String, zipUrl: URL, contentLocation: String? = nil) {
+    /** Title of the photo collection */
+    var title: String
+    
+    /** URL location of the zip stored on the cloud */
+    var zipUrl: URL?
+    
+    /**
+     Stored contentLocation as a trimmed string, thus only containg
+     the path from the app sandbox to the destination
+     */
+    fileprivate var contentLocation: String? = nil
+    
+    init(title: String, zipUrl: URL? = nil, contentLocation: String? = nil) {
         self.title = title
         self.zipUrl = zipUrl
         self.contentLocation = contentLocation
     }
     
-    /** <#Lorem ipsum dolor sit amet.#> */
+    /** Read the preview image from the contentUrl, if it exists */
     var previewImage: UIImage? {
         guard
             let previewUrl = self.contentUrl?.appendingPathComponent("_preview.png", isDirectory: true),
@@ -36,10 +46,7 @@ class PhotoCollection: Codable {
         return image
     }
     
-    /** <#Lorem ipsum dolor sit amet.#> */
-    fileprivate var contentLocation: String? = nil
-    
-    /** <#Lorem ipsum dolor sit amet.#> */
+    /** Unzipped location of the images including the preview image */
     var contentUrl: URL? {
         get {
             return contentLocation?.appendingUserDirectory(isDirectory: true)
@@ -49,7 +56,7 @@ class PhotoCollection: Codable {
         }
     }
     
-    enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey {
         case title = "collection_name"
         case zipUrl = "zipped_images_url"
     }
@@ -67,12 +74,14 @@ extension PhotoCollection: CustomStringConvertible {
  */
 struct PhotoCollectionCoding: Codable {
     let title: String
-    let zipUrl: URL
     let contentFilePath: String
     
+    /**
+     Map a PhotoCollection to a PhotoCollectionCoding
+     - warning: is failable since photoCollection.contentLocation can be nil
+     */
     init?(_ photoCollection: PhotoCollection) {
         self.title = photoCollection.title
-        self.zipUrl = photoCollection.zipUrl
         guard let path = photoCollection.contentLocation else {
             return nil
         }
@@ -81,7 +90,12 @@ struct PhotoCollectionCoding: Codable {
 }
 
 extension PhotoCollection {
+    /**
+     Convenience initializer to map PhotoCollectiongCoding back to
+     - warning: only title and contentLocation are stored in a
+     PhotoCollectionCoding. All others, such as zipUrl, will be nil
+     */
     convenience init(_ photoCollectionCoding: PhotoCollectionCoding) {
-        self.init(title: photoCollectionCoding.title, zipUrl: photoCollectionCoding.zipUrl, contentLocation: photoCollectionCoding.contentFilePath)
+        self.init(title: photoCollectionCoding.title, contentLocation: photoCollectionCoding.contentFilePath)
     }
 }
