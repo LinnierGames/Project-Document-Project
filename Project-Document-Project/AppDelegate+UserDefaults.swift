@@ -27,6 +27,7 @@ extension UserDefaults {
             }
         }
         set {
+            return
             if let collectionCodings = newValue?.map({ PhotoCollectionCoding.init($0) }) {
                 let collectionData = try? JSONEncoder().encode(collectionCodings)
                 self.set(collectionData, forKey: "collectionCache")

@@ -10,6 +10,15 @@ import UIKit
 
 class ViewController: UITableViewController {
     
+    private enum ViewState {
+        case DownloadingCollections
+        case DownloadingImages
+        case Success
+        case Failed(Error)
+    }
+    
+    private var viewState: ViewState = .DownloadingCollections
+    
     var collections: [PhotoCollection] = [] {
         didSet {
             tableView.reloadData()
@@ -34,18 +43,19 @@ class ViewController: UITableViewController {
     // MARK: - VOID METHODS
     
     private func updateUI() {
-        PhotoCollectionService().getPhotoCollections { (fetchedCollections) in
-            switch fetchedCollections {
-            case .done(let photos):
-                self.collections = photos
-            case .downloading(let progress), .unzipping(let progress):
-                break
-            case .error(let error):
-                break
-            default: break
-            }
-            
-        }
+        PhotoCollectionService().getPhotoCollections(
+            progress: { (progressValue) in
+                print(progressValue)
+        },
+            complition: { (result) in
+                switch result {
+                case .done(let photos):
+                    self.collections = photos
+                case .error(let error):
+                    print(error.localizedDescription)
+                default: break
+                }
+        })
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {

@@ -11,7 +11,7 @@ import Zip
 
 typealias ProgressCallback = (Float) -> Void
 
-class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelegate {
+class PhotoCollectionService: NSObject {
     
     lazy var session: URLSession = {
         return URLSession(
@@ -22,9 +22,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     }()
     
     //TODO: use progress call backs
-    var progressCallback: ProgressCallback?
-    var progressData: Data?
-    var estimatedTotal: Int = 0
+    private var downloadTasks = [PhotoCollectionDataTask]()
     
     private override init() {
         super.init()
@@ -46,8 +44,6 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     
     public enum PhotoResult {
         case done([PhotoCollection])
-        case downloading(Double)
-        case unzipping(Double)
         case finishedUnzipping(URL)
         case error(PhotoServiceError)
     }
@@ -61,6 +57,8 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     
     /** API call to collect the list of photo collections */
     public var baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
+    
+    typealias ProgressType = (Double) -> ()
     
     /**
      Collect the list of photo collections, fetching their titles and images
@@ -79,11 +77,11 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
             - Zipp could not be saved
             - Failed to Unzip: unsupported file type
      */
-    public func getPhotoCollections(complition: @escaping (_ PhotoResult: PhotoResult) -> ()) {
+    public func getPhotoCollections(progress: ProgressType? = nil, complition: @escaping (_ PhotoResult: PhotoResult) -> ()) {
         if let collection = UserDefaults.standard.cacheDownloadedImages {
             complition(PhotoResult.done(collection))
         } else {
-            fetchPhotoCollections(photoResultHandler: complition)
+            fetchPhotoCollections(progress: progress, photoResultHandler: complition)
         }
     }
     
@@ -94,7 +92,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
      - parameter photoResultHandler: must notify upstream to the origianl caller
      of any progress, error, or complition of downloading
      */
-    private func fetchPhotoCollections(photoResultHandler: @escaping (PhotoResult) -> Void) {
+    private func fetchPhotoCollections(progress: ProgressType? = nil, photoResultHandler: @escaping (PhotoResult) -> Void) {
         let request = URLRequest(url: baseUrl)
         let session = URLSession.shared
         
@@ -137,6 +135,22 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
         
         task.resume()
         
+        var photoTask = DownloadService.shared.download(request: request)
+        photoTask.progressHandler = progress
+        photoTask.completionHandler = { result in
+            switch result {
+            case .success(let jsonData):
+                guard let json = try? JSONSerialization.jsonObject(with: jsonData, options: .allowFragments) as! [[String: Any]] else {
+                    return print("JSON HAS FAILED TO SERIALIZE")
+                }
+                print("THIS IS THE JSON: \(json)")
+            case .failure(let err):
+                print(err.localizedDescription)
+            }
+        }
+        photoTask.resume()
+        
+        
     }
     
     /**
@@ -154,7 +168,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    private func fetchZip(from photoCollection: PhotoCollection, complition: @escaping (_ Result: PhotoResult) -> ()) {
+    private func fetchZip(from photoCollection: PhotoCollection, progress: ProgressType? = nil, complition: @escaping (_ Result: PhotoResult) -> ()) {
         let zipDownloadUrl = photoCollection.zipUrl!
         self.downloadZip(for: zipDownloadUrl, complition: { (tempFilePath, error) in
             guard
@@ -195,7 +209,7 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
      - parameter DownloadLocation: contains the temp location
      - parameter Error
      */
-    private func downloadZip(for url: URL, complition: @escaping (_ DownloadLocation: URL?, _ Error: Error?) -> ()) {
+    private func downloadZip(for url: URL, progress: ProgressType? = nil, complition: @escaping (_ DownloadLocation: URL?, _ Error: Error?) -> ()) {
         let request = URLRequest(url: url)
         session.downloadTask(with: request) { (downloadDestination, response, error) in
             guard
@@ -250,27 +264,41 @@ class PhotoCollectionService: NSObject, URLSessionDelegate, URLSessionDataDelega
     }
 }
 
-
-
-
-extension PhotoCollectionService {
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        progressData?.append(data)
-        let percentageDownloaded = Float(progressData!.count) / Float(estimatedTotal)
-        progressCallback?(percentageDownloaded)
+extension PhotoCollectionService: URLSessionDataDelegate {
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        
+        guard let task = downloadTasks.first(where: { $0.task == dataTask }) else {
+            completionHandler(.cancel)
+            return
+        }
+        task.expectedContentLength = response.expectedContentLength
+        completionHandler(.allow)
     }
     
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        self.estimatedTotal = Int(response.expectedContentLength)
-        completionHandler(URLSession.ResponseDisposition.allow)
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        guard let task = downloadTasks.first(where: { $0.task == dataTask }) else {
+            return
+        }
+        task.buffer.append(data)
+        let percentageDownloaded = Double(task.buffer.count) / Double(task.expectedContentLength)
+        DispatchQueue.main.async {
+            task.progressHandler?(percentageDownloaded)
+        }
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard let index = downloadTasks.index(where: { $0.task == task }) else {
+            return
+        }
+        let task = downloadTasks.remove(at: index)
+        DispatchQueue.main.async {
+            if let e = error {
+                task.completionHandler?(.failure(e))
+            } else {
+                task.completionHandler?(.success(task.buffer))
+            }
+        }
     }
 }
-
-
-
-//extension URL: ExpressibleByStringLiteral {
-//    public init(stringLiteral value: StringLiteralType) {
-//        self = URL(string: value)!
-//    }
-//}
 
