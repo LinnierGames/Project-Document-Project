@@ -62,6 +62,10 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
             switch result {
             case .done(let photos):
                 self.collections = photos
+                //TODO: map { $0 = 1.0 }
+                for c in self.collections {
+                    self.collectionDownloadProgress[c] = 1.0
+                }
                 UIView.animate(withDuration: 0.25, animations: {
                     self.navigationItem.prompt = nil
                 })

@@ -23,8 +23,6 @@ class PhotoCollectionService: NSObject {
         return URLSession.shared
     }()
     
-    var photoCollectionDataTasks: [PhotoCollection: PhotoCollectionDataTask] = [:]
-    
     private override init() {
         super.init()
     }
@@ -60,8 +58,6 @@ class PhotoCollectionService: NSObject {
     /** API call to collect the list of photo collections */
     public var baseUrl = URL(string: "https://s3-us-west-2.amazonaws.com/mob3/image_collection.json")!
     
-    typealias ProgressType = (Double) -> ()
-    
     /**
      Collect the list of photo collections, fetching their titles and images
      include the preview image. If photo collections have been cached, into
@@ -79,11 +75,11 @@ class PhotoCollectionService: NSObject {
             - Zipp could not be saved
             - Failed to Unzip: unsupported file type
      */
-    public func getPhotoCollections(progress: ProgressType? = nil, complition: @escaping (_ PhotoResult: PhotoResult) -> ()) {
+    public func getPhotoCollections(complition: @escaping (_ PhotoResult: PhotoResult) -> ()) {
         if let collection = UserDefaults.standard.cacheDownloadedImages {
             complition(PhotoResult.done(collection))
         } else {
-            fetchPhotoCollections(progress: progress, photoResultHandler: complition)
+            fetchPhotoCollections(photoResultHandler: complition)
         }
     }
     
@@ -94,12 +90,12 @@ class PhotoCollectionService: NSObject {
      - parameter photoResultHandler: must notify upstream to the origianl caller
      of any progress, error, or complition of downloading
      */
-    private func fetchPhotoCollections(progress: ProgressType? = nil, photoResultHandler: @escaping (PhotoResult) -> Void) {
+    private func fetchPhotoCollections(photoResultHandler: @escaping (PhotoResult) -> Void) {
         let request = URLRequest(url: baseUrl, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
         
         /* Fetch json of list of photo collections */
         var jsonTask = DownloadService.shared.download(request: request)
-        jsonTask.progressHandler = progress
+        // jsonTask.progressHandler = { progress in } //too small of a download to show progress
         jsonTask.completionHandler = { result in
             switch result {
             case .success(let jsonData):
@@ -117,28 +113,18 @@ class PhotoCollectionService: NSObject {
                 for aPhotoCollection in photoCollections {
                     dispatchGroup.enter()
                     /* download the zip */
-                    let request = URLRequest(url: aPhotoCollection.zipUrl!, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
-                    var downloadTask = DownloadService.shared.download(request: request)
-                    downloadTask.completionHandler = { result in
+                    var downloadTask = self.downloadZip(for: aPhotoCollection.zipUrl!, complition: { (result) in
                         defer { dispatchGroup.leave() }
                         switch result {
                         case .success(let zipData):
-                            /* write zip data to disk */
-                            let fileManager = FileManager.default
-                            let tmpFolder = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!.deletingLastPathComponent().appendingPathComponent("tmp", isDirectory: true)
-                            let zipFileName = UUID().uuidString.appending(".tmp")
-                            let zipUrlToSaveAt = tmpFolder.appendingPathComponent(zipFileName)
                             do {
-                                try zipData.write(to: zipUrlToSaveAt)
-                                
-                                /* unzip contents to proper location */
-                                let imagesCacheFolderFilePath = FileManager.default.imagesCacheFolder()
-                                try Zip.unzipFile(zipUrlToSaveAt, destination: imagesCacheFolderFilePath)
+                                let destinationFilePath = try self.unzip(data: zipData)
                                 
                                 /* Rename unzipped folder to collection title and reference location of unzipped folder */
+                                let fileManager = FileManager.default
                                 let unzippedFolderTitle = aPhotoCollection.zipUrl!.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
-                                let collectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
-                                let newCollectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(aPhotoCollection.title, isDirectory: true)
+                                let collectionCacheFileUrl = destinationFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
+                                let newCollectionCacheFileUrl = destinationFilePath.appendingPathComponent(aPhotoCollection.title, isDirectory: true)
                                 if collectionCacheFileUrl.lastPathComponent.lowercased() != newCollectionCacheFileUrl.lastPathComponent.lowercased() {
                                     try? fileManager.removeItem(at: newCollectionCacheFileUrl)
                                 }
@@ -146,18 +132,17 @@ class PhotoCollectionService: NSObject {
                                 
                                 aPhotoCollection.contentUrl = newCollectionCacheFileUrl
                             } catch {
-                                print("ERROR SAVING ZIP \(error.localizedDescription)")
+                                //TODO: handle throw when unzipping
                             }
+                           
                         case .failure(let err):
                             print("ERROR \(err.localizedDescription)")
                         }
-                    }
+                    })
                     downloadTask.progressHandler = { progress in
                         self.delegate?.photoCollectionService?(self, didRecivedProgress: progress, for: aPhotoCollection)
                     }
                     downloadTask.resume()
-                    
-                    //self.photoCollectionDataTasks[aPhotoCollection] = downloadTask
                 }
                 /* Once finished, call .done([PhotoCollection]) upstream */
                 dispatchGroup.notify(queue: .main, execute: {
@@ -175,51 +160,46 @@ class PhotoCollectionService: NSObject {
     }
     
     /**
-     Download, unzip, and save the contents, or images, of the
-     photoCollection.zipUrl.
+     <#Lorem ipsum dolor sit amet.#>
      
-     - parameter photoCollection: collection to download the zip from
-     - parameter Result: either containing the destination url of the unzipped
-     download or an error
-         - .finishedUnzipping: contains the destination url of the unzipped
-         folder of images
-         - .error:
-             - zipCouldNotSaveToTempFolder
-             - failedToUnzip
+     - parameter <#bar#>: <#Consectetur adipisicing elit.#>
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    private func fetchZip(from photoCollection: PhotoCollection, progress: ProgressType? = nil, complition: @escaping (_ Result: PhotoResult) -> ()) {
-        let zipDownloadUrl = photoCollection.zipUrl!
-        self.downloadZip(for: zipDownloadUrl, complition: { (tempFilePath, error) in
-            guard
-                error == nil else {
-                    return complition(.error(.badRequest(error!.localizedDescription)))
-            }
+    private func downloadZip(for zipUrl: URL, complition: @escaping (ResultType<Data>) -> ()) -> PhotoCollectionDataTask {
+        let request = URLRequest(url: zipUrl, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
+        
+        let downloadTask = DownloadService.shared.download(request: request)
+        downloadTask.completionHandler = complition
+        
+        return downloadTask
+    }
+    
+    
+    /**
+     Unzip and save the contents, or images, of the url.
+     
+     - parameter data: collection to download the zip from
+     
+     - returns: the url of the unzipped folder
+     */
+    private func unzip(data zipData: Data) throws -> URL {
+        /* write zip data to disk */
+        let fileManager = FileManager.default
+        let tmpFolder = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!.deletingLastPathComponent().appendingPathComponent("tmp", isDirectory: true)
+        let zipFileName = UUID().uuidString.appending(".tmp")
+        let zipUrlToSaveAt = tmpFolder.appendingPathComponent(zipFileName)
+        do {
+            try zipData.write(to: zipUrlToSaveAt)
             
-            guard let zippedFilePath = tempFilePath else {
-                return complition(.error(.zipCouldNotSaveToTempFolder))
-            }
+            /* unzip contents to proper location */
+            let imagesCacheFolderFilePath = FileManager.default.imagesCacheFolder()
+            try Zip.unzipFile(zipUrlToSaveAt, destination: imagesCacheFolderFilePath)
             
-            /* Unzip to cache folder and rename unzipped folder to the title of the Collection */
-            do {
-                let imagesCacheFolderFilePath = FileManager.default.imagesCacheFolder()
-//                try Zip.unzipFile(zippedFilePath, destination: imagesCacheFolderFilePath)
-                
-                /* Rename unzipped folder to collection title and reference location of unzipped folder */
-                let unzippedFolderTitle = zipDownloadUrl.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "+", with: " ")
-                let collectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(unzippedFolderTitle, isDirectory: true)
-                let newCollectionCacheFileUrl = imagesCacheFolderFilePath.appendingPathComponent(photoCollection.title, isDirectory: true)
-//                try FileManager.default.moveItem(at: collectionCacheFileUrl, to: newCollectionCacheFileUrl) //Rename old title to new title
-                
-//                complition(.finishedUnzipping(newCollectionCacheFileUrl))
-            } catch {
-                let fileManager = FileManager.default
-                try? fileManager.removeItem(at: zippedFilePath)
-                
-                return complition(.error(.FailedToUnzip))
-            }
-        })
+            return imagesCacheFolderFilePath
+        } catch {
+            throw error
+        }
     }
 
     /**
@@ -230,7 +210,8 @@ class PhotoCollectionService: NSObject {
      - parameter DownloadLocation: contains the temp location
      - parameter Error
      */
-    private func downloadZip(for url: URL, progress: ProgressType? = nil, complition: @escaping (_ DownloadLocation: URL?, _ Error: Error?) -> ()) {
+    @available(*, deprecated)
+    private func downloadZip(for url: URL, complition: @escaping (_ DownloadLocation: URL?, _ Error: Error?) -> ()) {
         let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
         session.downloadTask(with: request) { (downloadDestination, response, error) in
             guard
