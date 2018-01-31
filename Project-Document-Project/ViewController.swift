@@ -58,6 +58,7 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
     private func updateUI() {
         let photoService = PhotoCollectionService()
         photoService.delegate = self
+        UIApplication.shared.isNetworkActivityIndicatorVisible = true
         photoService.getPhotoCollections { (result) in
             switch result {
             case .done(let photos):
@@ -77,7 +78,6 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
             }
             UIApplication.shared.isNetworkActivityIndicatorVisible = false
         }
-        UIApplication.shared.isNetworkActivityIndicatorVisible = true
     }
     
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
@@ -96,6 +96,21 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
         }
     }
     
+    private func updateRow(for photoCollection: PhotoCollection) {
+        guard
+            let indexOfPhotoColletion = collections.index(where: { $0 == photoCollection }),
+            let cell = tableView.cellForRow(at: IndexPath(row: indexOfPhotoColletion.hashValue, section: 0)) as! CustomTableViewCell?,
+            let progress = collectionDownloadProgress[photoCollection]
+            else { return print("could find index for progress") }
+        
+        if progress < 1.0 {
+            cell.configure(photoCollection: photoCollection, progress: progress)
+        } else {
+            tableView.reloadRows(at: [IndexPath(row: indexOfPhotoColletion.hashValue, section: 0)], with: .none)
+        }
+        
+    }
+    
     // MARK: Photo Collection Service Delegate
     
     func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingCollection collection: [PhotoCollection]) {
@@ -106,8 +121,11 @@ class ViewController: UITableViewController, PhotoCollectionServiecDelegate {
     func photoCollectionService(_ service: PhotoCollectionService, didRecivedProgress progress: Double, for photoCollection: PhotoCollection) {
         collectionDownloadProgress[photoCollection] = progress
         
-        //TODO: update only by the cell vs the whole table
-        self.tableView.reloadData()
+        self.updateRow(for: photoCollection)
+    }
+    
+    func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingFor photoCollection: PhotoCollection) {
+        self.updateRow(for: photoCollection)
     }
     
     // MARK: - IBACTIONS

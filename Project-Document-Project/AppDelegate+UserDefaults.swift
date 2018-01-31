@@ -16,6 +16,7 @@ extension UserDefaults {
      */
     var cacheDownloadedImages: [PhotoCollection]? {
         get {
+            return nil
             if let collectionData = self.object(forKey: "collectionCache") as! Data? {
                 guard let photoCollectionCodings = try? JSONDecoder().decode([PhotoCollectionCoding].self, from: collectionData) else {
                     return nil
@@ -27,7 +28,6 @@ extension UserDefaults {
             }
         }
         set {
-            return
             if let collectionCodings = newValue?.map({ PhotoCollectionCoding.init($0) }) {
                 let collectionData = try? JSONEncoder().encode(collectionCodings)
                 self.set(collectionData, forKey: "collectionCache")

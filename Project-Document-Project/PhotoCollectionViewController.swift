@@ -20,12 +20,16 @@ class PhotoCollectionViewController: UICollectionViewController {
                         let images = collection else { return }
                     self.collectionOfImages = images
                     self.collectionView?.reloadData()
+                    
+                    self.loadingView?.dismiss(animated: true)
                 })
             }
         }
     }
     
     private var collectionOfImages: [UIImage]?
+    
+    private var loadingView: UIAlertController?
     
     // MARK: - RETURN VALUES
     
@@ -85,5 +89,12 @@ class PhotoCollectionViewController: UICollectionViewController {
     // MARK: - IBACTIONS
     
     // MARK: - LIFE CYCLE
+    
+    override func viewDidAppear(_ animated: Bool) {
+        if collectionOfImages == nil {
+            loadingView = UIAlertController(title: nil, message: "Loading", preferredStyle: .alert)
+            self.present(loadingView!, animated: true)
+        }
+    }
     
 }

@@ -15,6 +15,8 @@ typealias ProgressCallback = (Float) -> Void
     @objc optional func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingCollection collection: [PhotoCollection])
     
     @objc optional func photoCollectionService(_ service: PhotoCollectionService, didRecivedProgress progress: Double, for photoCollection: PhotoCollection)
+    
+    @objc optional func photoCollectionService(_ service: PhotoCollectionService, didFinishDownloadingFor photoCollection: PhotoCollection)
 }
 
 class PhotoCollectionService: NSObject {
@@ -113,7 +115,8 @@ class PhotoCollectionService: NSObject {
                 for aPhotoCollection in photoCollections {
                     dispatchGroup.enter()
                     /* download the zip */
-                    var downloadTask = self.downloadZip(for: aPhotoCollection.zipUrl!, complition: { (result) in
+                    var downloadTask = self.downloadZip(for: aPhotoCollection.zipUrl!)
+                    downloadTask.completionHandler = { (result) in
                         defer { dispatchGroup.leave() }
                         switch result {
                         case .success(let zipData):
@@ -131,14 +134,17 @@ class PhotoCollectionService: NSObject {
                                 try fileManager.moveItem(at: collectionCacheFileUrl, to: newCollectionCacheFileUrl) //Rename old title to new title
                                 
                                 aPhotoCollection.contentUrl = newCollectionCacheFileUrl
+                                
+                                self.delegate?.photoCollectionService?(self, didFinishDownloadingFor: aPhotoCollection)
                             } catch {
-                                //TODO: handle throw when unzipping
+                                //TODO: handle throw when unzipping, PhotoCollection's can hold an error code
                             }
-                           
+                            
                         case .failure(let err):
-                            print("ERROR \(err.localizedDescription)")
+                            //TODO: handle throw when unzipping, PhotoCollection's can hold an error code
+                            break
                         }
-                    })
+                    }
                     downloadTask.progressHandler = { progress in
                         self.delegate?.photoCollectionService?(self, didRecivedProgress: progress, for: aPhotoCollection)
                     }
@@ -166,11 +172,9 @@ class PhotoCollectionService: NSObject {
      
      - returns: <#Sed do eiusmod tempor.#>
      */
-    private func downloadZip(for zipUrl: URL, complition: @escaping (ResultType<Data>) -> ()) -> PhotoCollectionDataTask {
+    private func downloadZip(for zipUrl: URL) -> PhotoCollectionDataTask {
         let request = URLRequest(url: zipUrl, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30)
-        
         let downloadTask = DownloadService.shared.download(request: request)
-        downloadTask.completionHandler = complition
         
         return downloadTask
     }
@@ -238,7 +242,7 @@ class PhotoCollectionService: NSObject {
                 return
         }
         /*collect urls, excluding the preview image*/
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .background).async {
             var images: [UIImage] = []
             do {
                 let fileManager = FileManager.default
